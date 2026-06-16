@@ -175,21 +175,24 @@
     </table>
   </section>
 
-  <div class="anchor-info">Anchored: April 29, 2026, 1:30 PM UTC</div>
+  <div class="anchor-info">Anchored: June 16, 2026, 11:00 AM PST (19:00 UTC)</div>
 </main>
 
 <script>
   const nightMs = 30 * 60 * 1000;
   const dayMs   = 2 * 60 * 60 * 1000;
   
-  // Globally synchronized anchor point (ISO 8601 UTC string format)
-  const ANCHOR_DATE = new Date("2026-04-29T14:00:00Z"); 
+  // NEW ANCHOR: Exactly June 16, 2026 at 11:00 AM PST mapped to universal UTC
+  const ANCHOR_DATE = new Date("2026-06-16T19:00:00Z"); 
 
   function getSegments(count = 12) {
     const now = new Date();
     let segments = [];
     let cursor = new Date(ANCHOR_DATE);
-    let isDay = true; 
+    
+    // ADJUSTMENT: Since our anchor is 11:00 AM PST (the start of Night), 
+    // we change the initial loop phase to NIGHT (isDay = false)
+    let isDay = false; 
     let nightCount = 0;
 
     while (cursor < now || segments.length < count) {
@@ -204,10 +207,8 @@
         segments.push({ phase: isDay ? 'DAY' : 'NIGHT', start, end, isSpecialReset });
       }
 
-      // FIX: Ensure the cursor always moves cleanly to the end of the current block
       cursor = new Date(end.getTime());
 
-      // Then figure out what the *next* block's states should look like
       if (isSpecialReset) {
         isDay = true;
         nightCount = 0;
@@ -259,7 +260,6 @@
     });
   }
 
-  // Helper formatting for countdown strings
   function fmt(ms) {
     let s = Math.floor(ms / 1000);
     let h = Math.floor(s / 3600);
