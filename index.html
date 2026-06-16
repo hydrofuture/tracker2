@@ -3,18 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Game Cycle Tracker</title>
+    <title>TNL Day/Night Tracker</title>
     <style>
         :root {
-            --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
-            --glass-bg: rgba(255, 255, 255, 0.03);
-            --glass-border: rgba(255, 255, 255, 0.08);
+            --bg-gradient: linear-gradient(135deg, #060913 0%, #0b0f19 100%);
+            --glass-bg: rgba(255, 255, 255, 0.02);
+            --glass-border: rgba(255, 255, 255, 0.07);
             --text-primary: #f8fafc;
             --text-secondary: #94a3b8;
             --night-color: #38bdf8;
             --night-glow: rgba(56, 189, 248, 0.2);
             --day-color: #fbbf24;
             --day-glow: rgba(251, 191, 36, 0.2);
+            --horizon-line: rgba(255, 255, 255, 0.1);
         }
 
         * {
@@ -34,233 +35,359 @@
             padding: 20px;
         }
 
-        .container {
+        .tracker-card {
             width: 100%;
-            max-width: 550px;
+            max-width: 600px;
             background: var(--glass-bg);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             border: 1px solid var(--glass-border);
             border-radius: 24px;
-            padding: 30px;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-            text-align: center;
+            padding: 35px;
+            box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.7);
         }
 
-        /* Current Status Section */
-        .status-panel {
-            margin-bottom: 35px;
-            padding-bottom: 25px;
-            border-bottom: 1px solid var(--glass-border);
-        }
-
-        .label {
-            font-size: 0.85rem;
-            text-transform: uppercase;
-            letter-spacing: 0.15em;
-            color: var(--text-secondary);
-            margin-bottom: 8px;
-        }
-
-        .current-phase {
-            font-size: 2.5rem;
+        .header-title {
+            font-size: 1.4rem;
             font-weight: 800;
+            letter-spacing: 0.06em;
+            color: var(--text-primary);
+            text-align: center;
+            margin-bottom: 25px;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-bottom: 10px;
-            transition: all 0.5s ease;
+            background: linear-gradient(to right, #ffffff, #94a3b8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
 
-        .phase-night {
-            color: var(--night-color);
-            text-shadow: 0 0 20px var(--night-glow);
+        /* Sky Dome Visualizer Across the Top */
+        .sky-visualizer {
+            position: relative;
+            width: 100%;
+            height: 130px;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            margin-bottom: 25px;
+            overflow: hidden;
+            transition: background 1s ease;
         }
 
-        .phase-day {
-            color: var(--day-color);
-            text-shadow: 0 0 20px var(--day-glow);
+        /* Dynamic background tints for the sky box */
+        .sky-day {
+            background: linear-gradient(to top, rgba(251, 191, 36, 0.05) 0%, rgba(0,0,0,0.2) 100%);
+        }
+        
+        .sky-night {
+            background: linear-gradient(to top, rgba(56, 189, 248, 0.04) 0%, rgba(0,0,0,0.2) 100%);
         }
 
-        .timer {
-            font-size: 3.5rem;
+        /* The Horizon Path Line */
+        .sky-horizon {
+            position: absolute;
+            bottom: 20px;
+            left: 5%;
+            width: 90%;
+            height: 1px;
+            border-bottom: 1px dashed var(--horizon-line);
+            z-index: 1;
+        }
+
+        /* Moving Celestial Body (Sun/Moon) */
+        .celestial-body {
+            position: absolute;
+            width: 36px;
+            height: 36px;
+            font-size: 1.8rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2;
+            transform: translate(-50%, 50%); /* Center anchor mapping */
+            transition: left 1s linear, bottom 1s linear;
+        }
+
+        .glow-day {
+            filter: drop-shadow(0 0 10px var(--day-glow));
+        }
+
+        .glow-night {
+            filter: drop-shadow(0 0 10px var(--night-glow));
+        }
+
+        /* Time Overlay inside Visualizer */
+        .sky-clock {
+            position: absolute;
+            bottom: 35px;
+            width: 100%;
+            text-align: center;
+            font-size: 2.5rem;
             font-weight: 700;
             font-family: monospace;
             letter-spacing: -0.02em;
+            z-index: 3;
+            pointer-events: none;
+            opacity: 0.95;
         }
 
-        /* Schedule Table Section */
-        .schedule-title {
-            font-size: 1.1rem;
+        /* Quick Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .stat-box {
+            background: rgba(0, 0, 0, 0.15);
+            border: 1px solid var(--glass-border);
+            border-radius: 14px;
+            padding: 14px;
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .stat-value {
+            font-size: 1.25rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        /* Dynamic Phase Color Accents */
+        .phase-text-night {
+            color: var(--night-color);
+            text-shadow: 0 0 15px var(--night-glow);
+        }
+
+        .phase-text-day {
+            color: var(--day-color);
+            text-shadow: 0 0 15px var(--day-glow);
+        }
+
+        /* Schedule Section - No Scrollbar */
+        .schedule-section h3 {
+            font-size: 1.05rem;
             font-weight: 600;
-            text-align: left;
             margin-bottom: 15px;
             color: var(--text-primary);
+            opacity: 0.9;
         }
 
-        .table-container {
-            overflow-x: auto;
-            border-radius: 12px;
+        .table-wrapper {
             border: 1px solid var(--glass-border);
+            border-radius: 14px;
+            background: rgba(0, 0, 0, 0.15);
+            overflow: hidden; /* Clean edge clip, no scrollbar properties needed */
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
             text-align: left;
-            font-size: 0.95rem;
-        }
-
-        th, td {
-            padding: 12px 16px;
+            font-size: 0.9rem;
         }
 
         th {
-            background: rgba(0, 0, 0, 0.2);
+            background: #0a0d16;
             color: var(--text-secondary);
             font-weight: 600;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             text-transform: uppercase;
             letter-spacing: 0.05em;
-        }
-
-        tr {
+            padding: 14px 18px;
             border-bottom: 1px solid var(--glass-border);
-            background: rgba(255, 255, 255, 0.01);
         }
 
-        tr:last-child {
+        td {
+            padding: 13px 18px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+        }
+
+        tr:last-child td {
             border-bottom: none;
         }
 
-        tr:hover {
-            background: rgba(255, 255, 255, 0.03);
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.01);
         }
 
-        .row-night {
-            color: var(--night-color);
+        .col-phase {
             font-weight: 600;
         }
 
-        .row-day {
-            color: var(--day-color);
-            font-weight: 600;
-        }
-
-        .time-cell {
-            text-align: right;
-            color: var(--text-primary);
+        .footer-anchor {
+            margin-top: 25px;
+            text-align: center;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            opacity: 0.4;
         }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <div class="status-panel">
-            <div class="label">Current Phase</div>
-            <div id="current-phase" class="current-phase">Loading...</div>
-            <div id="timer" class="timer">00:00:00</div>
+    <div class="tracker-card">
+        <div class="header-title">TNL Day/Night Tracker</div>
+        
+        <div id="sky-box" class="sky-visualizer">
+            <div class="sky-horizon"></div>
+            <div id="celestial-body" class="celestial-body">☀️</div>
+            <div id="main-clock" class="sky-clock">--:--:--</div>
         </div>
 
-        <div class="schedule-title">Upcoming Phases</div>
-        <div class="table-container">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Phase</th>
-                        <th style="text-align: right;">Local Start Time</th>
-                    </tr>
-                </thead>
-                <tbody id="schedule-body">
-                    </tbody>
-            </table>
+        <div class="stats-grid">
+            <div class="stat-box">
+                <div class="stat-label">Current Phase</div>
+                <div id="stat-phase" class="stat-value">—</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Progress</div>
+                <div id="stat-progress" class="stat-value">—</div>
+            </div>
+        </div>
+
+        <div class="schedule-section">
+            <h3>Upcoming Schedule</h3>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Phase</th>
+                            <th>Start</th>
+                            <th>End</th>
+                        </tr>
+                    </thead>
+                    <tbody id="schedule-rows">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="footer-anchor">
+            Global Sync Point: June 16, 2026, 11:00 AM PDT
         </div>
     </div>
 
     <script>
-        // Constants in milliseconds
-        const NIGHT_DURATION = 30 * 60 * 1000; // 30 minutes
-        const DAY_DURATION = 2 * 60 * 60 * 1000; // 2 hours
-        const CYCLE_DURATION = NIGHT_DURATION + DAY_DURATION; // 2.5 hours
+        // Durations
+        const NIGHT_DURATION = 30 * 60 * 1000; 
+        const DAY_DURATION = 2 * 60 * 60 * 1000; 
+        const CYCLE_DURATION = NIGHT_DURATION + DAY_DURATION; 
 
-        // Fixed Anchor: Next night begins June 16, 2026 at 11:00 AM PDT.
-        // 11:00 AM PDT is 18:00:00 UTC. (Month index 5 = June)
+        // Fixed Anchor: June 16, 2026 at 11:00 AM PDT (18:00:00 UTC)
         const ANCHOR_TIME = Date.UTC(2026, 5, 16, 18, 0, 0);
 
         function updateTracker() {
             const now = Date.now();
             
-            // Safe modulo handling for past or future calculations
             let elapsed = now - ANCHOR_TIME;
             let msIntoCurrentCycle = ((elapsed % CYCLE_DURATION) + CYCLE_DURATION) % CYCLE_DURATION;
 
             let currentPhase = '';
             let timeLeft = 0;
+            let percentComplete = 0;
             let currentCycleStart = now - msIntoCurrentCycle;
 
-            // Determine current state
             if (msIntoCurrentCycle < NIGHT_DURATION) {
                 currentPhase = 'Night';
                 timeLeft = NIGHT_DURATION - msIntoCurrentCycle;
+                percentComplete = (msIntoCurrentCycle / NIGHT_DURATION) * 100;
             } else {
                 currentPhase = 'Day';
                 timeLeft = CYCLE_DURATION - msIntoCurrentCycle;
+                percentComplete = ((msIntoCurrentCycle - NIGHT_DURATION) / DAY_DURATION) * 100;
             }
 
-            // Update DOM for Current Status
-            const phaseEl = document.getElementById('current-phase');
-            phaseEl.textContent = currentPhase;
-            phaseEl.className = `current-phase phase-${currentPhase.toLowerCase()}`;
-            document.getElementById('timer').textContent = formatCountdown(timeLeft);
+            const formattedTimeLeft = formatClock(timeLeft);
 
-            // Generate Next 10 Phases
-            const scheduleBody = document.getElementById('schedule-body');
-            scheduleBody.innerHTML = '';
+            // 1. Update Core Sky Dome Trajectory Math (Sine-wave Arc)
+            const skyBox = document.getElementById('sky-box');
+            const celestial = document.getElementById('celestial-body');
+            
+            // X travels smoothly from 8% width across to 92% width
+            const xPosition = 8 + (percentComplete * 0.84);
+            // Y position uses a sine curve to peak at 50% completion (Max height: ~85px off the floor)
+            const radians = (percentComplete / 100) * Math.PI;
+            const yPosition = 20 + (Math.sin(radians) * 65);
+
+            celestial.style.left = `${xPosition}%`;
+            celestial.style.bottom = `${yPosition}px`;
+
+            // Adjust theme dynamically based on Day vs Night
+            if (currentPhase === 'Day') {
+                celestial.textContent = '☀️';
+                celestial.className = 'celestial-body glow-day';
+                skyBox.className = 'sky-visualizer sky-day';
+            } else {
+                celestial.textContent = '🌙';
+                celestial.className = 'celestial-body glow-night';
+                skyBox.className = 'sky-visualizer sky-night';
+            }
+
+            // Update Primary Countdown Elements
+            document.getElementById('main-clock').textContent = formattedTimeLeft;
+            document.getElementById('stat-progress').textContent = `${Math.floor(percentComplete)}%`;
+            
+            const phaseStat = document.getElementById('stat-phase');
+            phaseStat.textContent = currentPhase;
+            phaseStat.className = `stat-value phase-text-${currentPhase.toLowerCase()}`;
+
+            // 2. Rebuild Timeline Schedule Rows
+            const scheduleRows = document.getElementById('schedule-rows');
+            scheduleRows.innerHTML = '';
 
             let upcomingPhases = [];
-            
-            // Scan across a small window of cycles ahead to capture chronologically
             for (let i = 0; i < 7; i++) {
                 let cycleStart = currentCycleStart + (i * CYCLE_DURATION);
                 let nightStart = cycleStart;
-                let dayStart = cycleStart + NIGHT_DURATION;
+                let nightEnd = cycleStart + NIGHT_DURATION;
+                let dayStart = nightEnd;
+                let dayEnd = cycleStart + CYCLE_DURATION;
 
-                if (nightStart > now) upcomingPhases.push({ type: 'Night', time: nightStart });
-                if (dayStart > now) upcomingPhases.push({ type: 'Day', time: dayStart });
+                if (nightEnd > now) upcomingPhases.push({ type: 'Night', start: nightStart, end: nightEnd });
+                if (dayEnd > now) upcomingPhases.push({ type: 'Day', start: dayStart, end: dayEnd });
             }
 
-            // Sort and restrict to the next 10 items
-            upcomingPhases.sort((a, b) => a.time - b.time);
-            const next10 = upcomingPhases.slice(0, 10);
+            upcomingPhases.sort((a, b) => a.start - b.start);
+            const displayPhases = upcomingPhases.slice(0, 10);
 
-            // Populate Table
-            next10.forEach(phase => {
-                const row = document.createElement('tr');
-                
+            displayPhases.forEach(phase => {
+                const tr = document.createElement('tr');
+
                 const phaseCell = document.createElement('td');
                 phaseCell.textContent = phase.type;
-                phaseCell.className = `row-${phase.type.toLowerCase()}`;
-                
-                const timeCell = document.createElement('td');
-                timeCell.className = 'time-cell';
-                timeCell.textContent = formatLocalTime(phase.time);
+                phaseCell.className = `col-phase phase-text-${phase.type.toLowerCase()}`;
 
-                row.appendChild(phaseCell);
-                row.appendChild(timeCell);
-                scheduleBody.appendChild(row);
+                const startCell = document.createElement('td');
+                startCell.textContent = formatLocalTime(phase.start);
+
+                const endCell = document.createElement('td');
+                endCell.textContent = formatLocalTime(phase.end);
+
+                tr.appendChild(phaseCell);
+                tr.appendChild(startCell);
+                tr.appendChild(endCell);
+                scheduleRows.appendChild(tr);
             });
         }
 
-        function formatCountdown(ms) {
+        function formatClock(ms) {
             let seconds = Math.floor((ms / 1000) % 60);
             let minutes = Math.floor((ms / (1000 * 60)) % 60);
             let hours = Math.floor((ms / (1000 * 60 * 60)) % 24);
 
-            // Zero padding
-            hours = String(hours).padStart(2, '0');
-            minutes = String(minutes).padStart(2, '0');
-            seconds = String(seconds).padStart(2, '0');
-
-            return `${hours}:${minutes}:${seconds}`;
+            return [
+                String(hours).padStart(2, '0'),
+                String(minutes).padStart(2, '0'),
+                String(seconds).padStart(2, '0')
+            ].join(':');
         }
 
         function formatLocalTime(timestamp) {
@@ -271,7 +398,7 @@
             });
         }
 
-        // Run immediately, then tick every second
+        // Run updates
         updateTracker();
         setInterval(updateTracker, 1000);
     </script>
